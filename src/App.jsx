@@ -113,22 +113,37 @@ const App = () => {
     fetchMarketData();
   }, []);
 
-  const fetchNews = async () => {
+  const fetchNews = async (retries = 3) => {
     setNewsLoading(true);
     setNewsError(null);
-    try {
-      const res = await fetch('/api/news');
-      const data = await res.json();
-      if (data.success) {
-        setNews(data.news || []);
-      } else {
-        setNewsError(data.error || '新聞加載失敗');
+    let lastError = null;
+    
+    for (let attempt = 0; attempt < retries; attempt++) {
+      try {
+        const res = await fetch('/api/news', { signal: AbortSignal.timeout(15000) });
+        const data = await res.json();
+        if (data.success) {
+          setNews(data.news || []);
+          setNewsLoading(false);
+          return;
+        } else {
+          lastError = data.error || '新聞加載失敗';
+          if (attempt < retries - 1) {
+            await new Promise(resolve => setTimeout(resolve, 1000 * (attempt + 1)));
+            continue;
+          }
+        }
+      } catch (e) {
+        lastError = e.name === 'AbortError' ? '請求超時，請檢查網絡' : `網絡連接失敗: ${e.message}`;
+        if (attempt < retries - 1) {
+          await new Promise(resolve => setTimeout(resolve, 1000 * (attempt + 1)));
+          continue;
+        }
       }
-    } catch (e) {
-      setNewsError('網絡連接失敗');
-    } finally {
-      setNewsLoading(false);
     }
+    
+    setNewsError(lastError || '新聞加載失敗，請稍後重試');
+    setNewsLoading(false);
   };
 
   const fetchCalendar = async () => {
