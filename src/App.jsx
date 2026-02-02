@@ -74,6 +74,117 @@ const App = () => {
   const [termLoading, setTermLoading] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
+  const FALLBACK_LOCAL_NEWS = [
+    {
+      id: 1,
+      title: "AI 全球財經終端：歡迎體驗",
+      source: "系統預置",
+      time: "剛剛",
+      summary: "當前新聞服務暫時不可用，或網絡連接不穩定。請稍後重試。系統已為您加載預置新聞，確保頁面正常顯示。",
+      aiInsight: "💡 提示：請檢查網絡連接或後端服務狀態。",
+      category: "系統提示",
+      url: "#",
+      image: null,
+      originalTitle: "AI 全球財經終端：歡迎體驗"
+    },
+    {
+      id: 2,
+      title: "全球經濟展望：挑戰與機遇並存",
+      source: "系統預置",
+      time: "1小時前",
+      summary: "分析師指出，儘管全球經濟面臨多重挑戰，但新興技術和綠色產業帶來新的增長機遇。",
+      aiInsight: "💡 投資者應關注科技創新和可持續發展領域的投資機會。",
+      category: "宏觀經濟",
+      url: "#",
+      image: null,
+      originalTitle: "全球經濟展望：挑戰與機遇並存"
+    },
+    {
+      id: 3,
+      title: "科技股領漲市場，AI 概念持續火熱",
+      source: "系統預置",
+      time: "2小時前",
+      summary: "人工智能相關股票表現強勁，帶動科技板塊整體上漲。市場對 AI 技術的未來發展充滿期待。",
+      aiInsight: "💡 AI 領域的長期投資價值顯著，但需警惕短期波動風險。",
+      category: "市場分析",
+      url: "#",
+      image: null,
+      originalTitle: "科技股領漲市場，AI 概念持續火熱"
+    },
+    {
+      id: 4,
+      title: "央行貨幣政策會議紀要：謹慎觀望",
+      source: "系統預置",
+      time: "3小時前",
+      summary: "最新央行會議紀要顯示，決策者對通脹前景仍持謹慎態度，未來貨幣政策走向仍不明朗。",
+      aiInsight: "💡 貨幣政策的不確定性可能增加市場波動，建議投資者保持流動性。",
+      category: "政策解讀",
+      url: "#",
+      image: null,
+      originalTitle: "央行貨幣政策會議紀要：謹慎觀望"
+    },
+    {
+      id: 5,
+      title: "原油價格波動加劇，能源板塊受關注",
+      source: "系統預置",
+      time: "4小時前",
+      summary: "地緣政治緊張局勢和供應鏈問題導致原油價格大幅波動，能源類股票成為市場焦點。",
+      aiInsight: "💡 能源板塊短期內受地緣政治影響大，長期投資需綜合考慮供需關係。",
+      category: "大宗商品",
+      url: "#",
+      image: null,
+      originalTitle: "原油價格波動加劇，能源板塊受關注"
+    },
+    {
+      id: 6,
+      title: "黃金避險需求上升，貴金屬表現堅挺",
+      source: "系統預置",
+      time: "5小時前",
+      summary: "在全球經濟不確定性增加的背景下，黃金作為避險資產的吸引力增強，價格持續走高。",
+      aiInsight: "💡 適當配置黃金有助於對沖市場風險，尤其是在波動時期。",
+      category: "貴金屬",
+      url: "#",
+      image: null,
+      originalTitle: "黃金避險需求上升，貴金屬表現堅挺"
+    },
+    {
+      id: 7,
+      title: "新興市場投資機會：高增長與高風險並存",
+      source: "系統預置",
+      time: "6小時前",
+      summary: "部分新興市場經濟體展現出強勁增長勢頭，吸引國際資本流入，但同時也伴隨著較高的政治和匯率風險。",
+      aiInsight: "💡 投資新興市場需仔細評估各國宏觀經濟狀況和政策穩定性。",
+      category: "新興市場",
+      url: "#",
+      image: null,
+      originalTitle: "新興市場投資機會：高增長與高風險並存"
+    },
+    {
+      id: 8,
+      title: "區塊鏈技術應用加速，數字資產未來可期",
+      source: "系統預置",
+      time: "7小時前",
+      summary: "區塊鏈技術在金融、供應鏈等領域的應用不斷深化，數字資產的發展前景廣闊，但監管政策仍是關鍵變數。",
+      aiInsight: "💡 區塊鏈技術的長期潛力巨大，但數字資產投資波動性高，需謹慎。",
+      category: "區塊鏈",
+      url: "#",
+      image: null,
+      originalTitle: "區塊鏈技術應用加速，數字資產未來可期"
+    },
+    {
+      id: 9,
+      title: "ESG 投資理念盛行，可持續發展成主流",
+      source: "系統預置",
+      time: "8小時前",
+      summary: "環境、社會和公司治理（ESG）投資理念日益受到重視，越來越多的投資者將可持續發展納入決策考量。",
+      aiInsight: "💡 ESG 投資不僅符合社會責任，長期來看也可能帶來穩定的財務回報。",
+      category: "ESG投資",
+      url: "#",
+      image: null,
+      originalTitle: "ESG 投資理念盛行，可持續發展成主流"
+    }
+  ];
+
   // 計算器狀態
   const [calcMode, setCalcMode] = useState('compound'); // compound, mortgage, roi
   const [compoundPrincipal, setCompoundPrincipal] = useState('');
@@ -154,7 +265,15 @@ const App = () => {
     for (let attempt = 0; attempt < retries; attempt++) {
       try {
         const res = await fetch('/api/news', { signal: AbortSignal.timeout(15000) });
-        const data = await res.json();
+        let data;
+        const contentType = res.headers.get("content-type");
+        if (contentType && contentType.includes("application/json")) {
+          data = await res.json();
+        } else {
+          const text = await res.text();
+          console.error("API 返回非 JSON 格式，可能是 Vercel 錯誤頁面:", text.substring(0, 200));
+          throw new Error("服務器返回非 JSON 格式數據，請檢查 Vercel 日誌。");
+        }
         if (data.success) {
           setNews(data.news || []);
           setNewsLoading(false);
@@ -184,7 +303,14 @@ const App = () => {
       }
     }
     
-    setNewsError(lastError || '新聞加載失敗，請稍後重試');
+    // 如果最終還是失敗，則使用本地預置新聞數據，不顯示紅色錯誤框
+    if (news.length === 0) {
+      setNews(FALLBACK_LOCAL_NEWS);
+      console.warn("API 加載失敗，已回退到本地預置新聞數據。");
+      // 不設置 newsError，避免顯示紅色錯誤框
+    } else {
+      setNewsError(lastError || '新聞加載失敗，請稍後重試');
+    }
     setNewsLoading(false);
   };
 

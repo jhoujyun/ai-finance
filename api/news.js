@@ -10,6 +10,72 @@ let lastResetDate = new Date().toDateString();
 let terminologyCache = {};
 const TERMINOLOGY_CACHE_DURATION = 24 * 60 * 60 * 1000;
 
+const FALLBACK_NEWS = [
+  {
+    title: "全球股市震盪，投資者應如何應對？",
+    description: "近期全球主要股市波動加劇，受地緣政治緊張和通脹預期影響。專家建議投資者保持謹慎，分散投資組合，並關注長期價值。",
+    url: "#",
+    source: { name: "系統預置" },
+    publishedAt: new Date().toISOString()
+  },
+  {
+    title: "科技巨頭財報季來臨，市場屏息以待",
+    description: "蘋果、微軟、谷歌等科技巨頭即將發布最新財報，其業績表現將對全球股市產生重大影響。分析師預計，AI 相關業務將是本次財報的亮點。",
+    url: "#",
+    source: { name: "系統預置" },
+    publishedAt: new Date().toISOString()
+  },
+  {
+    title: "央行貨幣政策轉向，債市迎來新機遇",
+    description: "隨著全球通脹壓力趨緩，多國央行釋放出貨幣政策可能轉向的信號。債券市場有望迎來配置良機，尤其是高評級債券。",
+    url: "#",
+    source: { name: "系統預置" },
+    publishedAt: new Date().toISOString()
+  },
+  {
+    title: "原油價格波動加劇，能源板塊投資風險與機遇並存",
+    description: "地緣政治緊張局勢和全球經濟前景不明朗導致原油價格劇烈波動。投資者需密切關注供應鏈變化和OPEC+的決策。",
+    url: "#",
+    source: { name: "系統預置" },
+    publishedAt: new Date().toISOString()
+  },
+  {
+    title: "新興市場吸引力提升，但匯率風險不容忽視",
+    description: "在全球經濟復甦不均衡的背景下，部分新興市場展現出較強的增長潛力。然而，匯率波動和資本外流風險仍是投資者需要警惕的因素。",
+    url: "#",
+    source: { name: "系統預置" },
+    publishedAt: new Date().toISOString()
+  },
+  {
+    title: "黃金避險需求升溫，貴金屬配置價值凸顯",
+    description: "在不確定性增加的市場環境中，黃金作為傳統避險資產的吸引力再次提升。投資者可適當配置貴金屬以對沖風險。",
+    url: "#",
+    source: { name: "系統預置" },
+    publishedAt: new Date().toISOString()
+  },
+  {
+    title: "AI 技術加速金融業變革，智能投顧成新趨勢",
+    description: "人工智能技術正深刻改變金融服務業，智能投顧、量化交易等新模式不斷湧現，為投資者提供更個性化、高效的服務。",
+    url: "#",
+    source: { name: "系統預置" },
+    publishedAt: new Date().toISOString()
+  },
+  {
+    title: "全球供應鏈重塑，製造業板塊面臨挑戰與機遇",
+    description: "地緣政治和貿易摩擦加速全球供應鏈多元化布局，部分製造業企業面臨成本上升壓力，但也為具備彈性和創新能力的企業帶來新機遇。",
+    url: "#",
+    source: { name: "系統預置" },
+    publishedAt: new Date().toISOString()
+  },
+  {
+    title: "數字貨幣監管趨嚴，區塊鏈技術應用前景廣闊",
+    description: "隨著各國對數字貨幣監管政策的逐步完善，區塊鏈技術在金融、供應鏈等領域的應用前景日益廣闊，但投資仍需謹慎。",
+    url: "#",
+    source: { name: "系統預置" },
+    publishedAt: new Date().toISOString()
+  }
+];
+
 const POPULAR_TERMS = {
   '縮表': '央行減少資產負債表規模，通常通過不再購買新的資產或讓現有資產到期而不再購買來實現。這是一種緊縮貨幣政策工具。',
   '非農': '美國非農就業人數，是衡量美國就業市場健康狀況的重要經濟指標。每月首週五發布，對美元和股市影響重大。',
@@ -66,7 +132,7 @@ async function fetchNewsFromSources() {
                 articles = feed.items;
             } catch (parserError) {
                 console.warn(`rss-parser failed for ${url}, falling back to native parser. Error: ${parserError.message}`);
-                const response = await fetch(url, { signal: AbortSignal.timeout(5000) });
+                                const response = await fetch(url, { signal: AbortSignal.timeout(3000) });
                 if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
                 const xmlText = await response.text();
                 const feed = await nativeRssParser(xmlText);
@@ -147,10 +213,16 @@ export default async function handler(req, res) {
       return res.status(200).json({ success: true, news: newsCache, timestamp: new Date(cacheTimestamp).toISOString(), fromCache: true });
     }
 
-    const articles = await fetchNewsFromSources();
+    let articles = [];
+    try {
+      articles = await fetchNewsFromSources();
+    } catch (e) {
+      console.error("獲取新聞源失敗，使用預置數據: ", e.message);
+      articles = FALLBACK_NEWS.map(news => ({ ...news, publishedAt: new Date().toISOString(), source: { name: "系統預置" } }));
+    }
 
     if (articles.length === 0) {
-        throw new Error('無法從任何來源獲取新聞。');
+        articles = FALLBACK_NEWS.map(news => ({ ...news, publishedAt: new Date().toISOString(), source: { name: "系統預置" } }));
     }
 
     // 快速返回原始新聞，不進行 AI 處理
