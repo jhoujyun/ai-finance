@@ -97,15 +97,51 @@ async function fetchNewsFromSources() {
 }
 
 export default async function handler(req, res) {
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
-  if (req.method === 'OPTIONS') return res.status(200).end();
+  res.setHeader("Access-Control-Allow-Origin", "*");
+  res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS"); // 允許 POST 方法
+  if (req.method === "OPTIONS") return res.status(200).end();
 
   try {
+    const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
+    let BASE_URL = process.env.API_BASE_URL || 'https://api.openai.com/v1';
+    if (BASE_URL.endsWith('/')) BASE_URL = BASE_URL.slice(0, -1);
+    if (!BASE_URL.includes('/v1')) BASE_URL += '/v1';
+    const MODEL = process.env.AI_MODEL || 'gpt-4o-mini';
+
+    // --- 術語百科查詢邏輯 ---
     if (req.query.term) {
-      // ... 術語百科邏輯保持不變 ...
+      const term = req.query.term.trim();
+      if (POPULAR_TERMS[term]) {
+        return res.status(200).json({ success: true, explanation: POPULAR_TERMS[term] });
+      }
+      if (terminologyCache[term] && terminologyCache[term].timestamp && (Date.now() - terminologyCache[term].timestamp < TERMINOLOGY_CACHE_DURATION)) {
+        return res.status(200).json({ success: true, explanation: terminologyCache[term].explanation });
+      }
+      if (!OPENAI_API_KEY) {
+        return res.status(200).json({ success: false, error: '缺少 OPENAI_API_KEY' });
+      }
+      return await handleTerminologySearchWithRetry(term, BASE_URL, OPENAI_API_KEY, MODEL, res, 3);
     }
 
+    // --- 獨立 AI 處理單個新聞接口 (POST) ---
+    if (req.method === 'POST' && req.url === '/api/news/process-single') {
+      const { article } = req.body;
+      if (!article || !article.title || !article.description) {
+        return res.status(400).json({ success: false, error: '缺少新聞文章內容' });
+      }
+      if (!OPENAI_API_KEY) {
+        return res.status(200).json({ success: false, error: '缺少 OPENAI_API_KEY' });
+      }
+      try {
+        const processedArticle = await processSingleArticle(article, 0, BASE_URL, OPENAI_API_KEY, MODEL);
+        return res.status(200).json({ success: true, processedArticle });
+      } catch (aiError) {
+        console.error('獨立 AI 處理失敗:', aiError);
+        return res.status(200).json({ success: false, error: `AI 處理失敗: ${aiError.message}` });
+      }
+    }
+
+    // --- 獲取原始新聞列表 (GET) ---
     const now = Date.now();
     if (newsCache && cacheTimestamp && (now - cacheTimestamp < CACHE_DURATION)) {
       return res.status(200).json({ success: true, news: newsCache, timestamp: new Date(cacheTimestamp).toISOString(), fromCache: true });
@@ -117,30 +153,25 @@ export default async function handler(req, res) {
         throw new Error('無法從任何來源獲取新聞。');
     }
 
-    const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
-    let processedNews;
-    if (OPENAI_API_KEY) {
-      const articlesToProcess = Array(9).fill(null).map((_, i) => articles[i] || { title: `Placeholder ${i+1}`, description: `No content for placeholder ${i+1}`, source: { name: 'System' }, publishedAt: new Date().toISOString(), url: '#' });
-      const processingPromises = articlesToProcess.map((article, index) => 
-        processSingleArticle(article, index, process.env.API_BASE_URL, OPENAI_API_KEY, process.env.AI_MODEL)
-      );
-      const results = await Promise.allSettled(processingPromises);
-      processedNews = results.map((result, index) => {
-        const originalArticle = articlesToProcess[index];
-        if (result.status === 'fulfilled') {
-          return { id: index + 1, title: result.value.title, source: originalArticle.source.name, time: getRelativeTime(originalArticle.publishedAt), summary: result.value.summary, aiInsight: result.value.aiInsight, category: result.value.category, url: originalArticle.url, image: null, originalTitle: originalArticle.title };
-        } else {
-          console.error(`處理新聞 ${index + 1} 失敗:`, result.reason);
-          return createFallbackNews([originalArticle], `AI 處理失敗: ${result.reason?.message || '未知錯誤'}`)[0];
-        }
-      });
-    } else {
-      processedNews = createFallbackNews(articles, '缺少 OPENAI_API_KEY');
-    }
+    // 快速返回原始新聞，不進行 AI 處理
+    const rawNews = Array(9).fill(null).map((_, i) => {
+      const originalArticle = articles[i] || { title: `Placeholder ${i+1}`, description: `No content for placeholder ${i+1}`, source: { name: 'System' }, publishedAt: new Date().toISOString(), url: '#' };
+      return {
+        id: i + 1,
+        title: originalArticle.title,
+        source: originalArticle.source.name,
+        time: getRelativeTime(originalArticle.publishedAt),
+        summary: originalArticle.description || '點擊查看原文',
+        url: originalArticle.url,
+        image: originalArticle.urlToImage,
+        originalTitle: originalArticle.title,
+        aiInsight: 'AI 正在解讀中...'
+      };
+    });
 
-    newsCache = processedNews;
+    newsCache = rawNews;
     cacheTimestamp = now;
-    res.status(200).json({ success: true, news: processedNews, timestamp: new Date().toISOString(), fromCache: false });
+    res.status(200).json({ success: true, news: rawNews, timestamp: new Date().toISOString(), fromCache: false });
 
   } catch (error) {
     console.error('[API Error]', error);

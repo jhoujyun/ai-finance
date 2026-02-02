@@ -113,6 +113,39 @@ const App = () => {
     fetchMarketData();
   }, []);
 
+  const processNewsAIInsight = async (newsItem, index) => {
+    try {
+      const response = await fetch('/api/news/process-single', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          article: {
+            title: newsItem.title,
+            description: newsItem.summary,
+            source: { name: newsItem.source }
+          }
+        })
+      });
+      
+      const data = await response.json();
+      if (data.success && data.processedArticle) {
+        setNews(prevNews => {
+          const updatedNews = [...prevNews];
+          updatedNews[index] = {
+            ...updatedNews[index],
+            title: data.processedArticle.title || updatedNews[index].title,
+            summary: data.processedArticle.summary || updatedNews[index].summary,
+            aiInsight: data.processedArticle.aiInsight || '💡 AI 解讀暫時不可用',
+            category: data.processedArticle.category || updatedNews[index].category
+          };
+          return updatedNews;
+        });
+      }
+    } catch (error) {
+      console.error(`處理第 ${index + 1} 條新聞 AI 解讀失敗:`, error);
+    }
+  };
+
   const fetchNews = async (retries = 3) => {
     setNewsLoading(true);
     setNewsError(null);
@@ -125,6 +158,15 @@ const App = () => {
         if (data.success) {
           setNews(data.news || []);
           setNewsLoading(false);
+          
+          // 異步加載 AI 解讀
+          const newsArray = data.news || [];
+          newsArray.forEach((newsItem, index) => {
+            if (newsItem.aiInsight === 'AI 正在解讀中...') {
+              processNewsAIInsight(newsItem, index);
+            }
+          });
+          
           return;
         } else {
           lastError = data.error || '新聞加載失敗';
