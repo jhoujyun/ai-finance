@@ -1,0 +1,15 @@
+{
+  "redirects": [
+    {
+      "source": "/",
+      "has": [
+        {
+          "type": "host",
+          "value": "www.f-url.com"
+        }
+      ],
+      "destination": "https://f-url.com/",
+      "permanent": true
+    }
+  ]
+}
