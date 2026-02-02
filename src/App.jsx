@@ -535,6 +535,16 @@ const App = () => {
         {/* 新聞標籤 */}
         {activeTab === 'news' && (
           <ErrorBoundary error={newsError}>
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-2xl font-bold text-slate-900">即時新聞</h2>
+              <button
+                onClick={() => fetchNews(3, true)}
+                className="p-2 hover:bg-slate-200 rounded-full transition"
+                title="刷新新聞"
+              >
+                <RefreshCw className="w-5 h-5 text-slate-600" />
+              </button>
+            </div>
             {newsLoading && news.length === 0 ? (
               <NewsSkeleton />
             ) : news.length > 0 ? (

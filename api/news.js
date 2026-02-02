@@ -1,4 +1,4 @@
-import Parser from 'rss-parser';
+
 
 let newsCache = null;
 let cacheTimestamp = null;
@@ -125,19 +125,12 @@ async function fetchNewsFromSources() {
 
     for (const url of RSS_FEEDS) {
         try {
-            // 優先嘗試 rss-parser
-            try {
-                const parser = new Parser();
-                const feed = await parser.parseURL(url);
-                articles = feed.items;
-            } catch (parserError) {
-                console.warn(`rss-parser failed for ${url}, falling back to native parser. Error: ${parserError.message}`);
-                                const response = await fetch(url, { signal: AbortSignal.timeout(3000) });
-                if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-                const xmlText = await response.text();
-                const feed = await nativeRssParser(xmlText);
-                articles = feed.items;
-            }
+            // 統一使用原生解析器
+            const response = await fetch(url, { signal: AbortSignal.timeout(3000) });
+            if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+            const xmlText = await response.text();
+            const feed = await nativeRssParser(xmlText);
+            articles = feed.items;
 
             if (articles && articles.length > 0) {
                 return articles.map(item => ({
